@@ -1,0 +1,258 @@
+---
+title: "RFM"
+subtitle: "Quarto (RevealJS) & Plotly presentation"
+author: "[dstsimokha](https://github.com/dstsimokha)"
+jupyter: python3
+format:
+  revealjs:
+    navigation-mode: vertical
+    self-contained: true
+    theme: [default, style/custom.scss]
+    smaller: true
+---
+
+Group names for the model were taken from [CleverTap's guide on RFM](https://clevertap.com/blog/rfm-analysis/).  
+The rest is handmade with help of [Quarto](https://quarto.org/) *(with RevealJS)* and [Plotly]().  
+
+:::{.callout-caution}
+## Installation & Usage short guide
+
+You need to install [Quarto](https://quarto.org/docs/get-started/). I'm using VSCode with Python environment named `env` inside project directory - in that case Quarto will use it by default, all you need to write `jupyter: python3` to render a document with it.  
+
+`Ctrl+Shift+K` renders the Quarto document in VSCode.  
+:::
+
+:::{.callout-note}
+The RFM stands for `Recency, Frequency, Monetary` and helps to segment users by these dimensions.  
+
+The main point is to look at a distribution of users inside `Recency` & `Frequency` bins - amount of users inside a bin and their `Monetary` value can be used as written number and bin color opacity interchangeably.
+:::
+
+```{python}
+# loading packages
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+```
+
+
+```{python}
+# generating data
+df = pd.DataFrame({
+    # obligatory: user_id, recency, frequency, monetary
+    'user_id': range(1, 500_001),
+    'recency': np.random.choice(5, 500_000, p=[.05, .1, .5, .3, .05])+1,
+    'frequency': np.random.choice(5, 500_000, p=[.05, .3, .5, .1, .05])+1,
+    'monetary': np.random.binomial(n=10_000, p=0.5, size=500_000),
+    # additional: region, lifetime, period, active_days, active_minutes
+    'region': list(
+        map(
+            ['Africa', 'Asia', 'Europe', 'North America', 'South America', 'RoW'].__getitem__, 
+            np.random.randint(0, 6, 500_000)
+        )
+    ),
+    'lifetime': np.random.binomial(n=366, p=0.25, size=500_000)+1,
+    'period': np.random.binomial(n=366, p=0.75, size=500_000)+1,
+    'active_days': np.random.binomial(n=366, p=0.9, size=500_000)+1,
+    'active_minutes': np.random.binomial(n=366*24*60, p=0.1, size=500_000)+1,
+})
+
+# preparing segments data
+RFM = df[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).sum().reset_index().pivot(index='frequency', columns='recency', values='monetary')
+
+MEAN_MONETARY = df[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='monetary')
+PERCENT_OF_TOTAL_MONETARY = df[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).sum().reset_index().pivot(index='frequency', columns='recency', values='monetary') / df['monetary'].sum()
+
+USERS = df[['recency', 'frequency', 'user_id']].groupby(['recency', 'frequency']).count().reset_index().pivot(index='frequency', columns='recency', values='user_id')
+
+LIFETIME_MEAN = df[['recency', 'frequency', 'lifetime']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='lifetime')
+LIFETIME_MEDIAN = df[['recency', 'frequency', 'lifetime']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='lifetime')
+
+PERIOD_MEAN = df[['recency', 'frequency', 'period']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='period')
+PERIOD_MEDIAN = df[['recency', 'frequency', 'period']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='period')
+
+ACTIVE_DAYS_MEAN = df[['recency', 'frequency', 'active_days']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='active_days')
+ACTIVE_DAYS_MEDIAN = df[['recency', 'frequency', 'active_days']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='active_days')
+
+# stacking data for hover
+HOVER_DATA = np.dstack((
+    USERS, 
+    MEAN_MONETARY, PERCENT_OF_TOTAL_MONETARY, 
+    LIFETIME_MEAN, LIFETIME_MEDIAN, 
+    PERIOD_MEAN, PERIOD_MEDIAN, 
+    ACTIVE_DAYS_MEAN, ACTIVE_DAYS_MEDIAN
+))
+```
+
+
+```{python}
+# creating plots
+# preparing segments boundaries
+# https://coolors.co/c7d4e0-9fdbdb-e0c977-cce376-f4a67f-fddd84-72dda5-fe8287-a39cb2-73bcfd
+segments = {
+    '0': {'name': 'Hibernating', 'color': '#c7d4e0', 'coords': [0.5, 0.5, 2.5, 2.5]},
+    '1': {'name': 'About to Sleep', 'color': '#9fdbdb', 'coords': [2.5, 0.5, 3.5, 2.5]},
+    '2': {'name': 'Promising', 'color': '#e0c977', 'coords': [3.5, 0.5, 4.5, 1.5]},
+    '3': {'name': 'New Customers', 'color': '#cce376', 'coords': [4.5, 0.5, 5.5, 1.5]},
+    '4': {'name': 'At Risk', 'color': '#f4a67f', 'coords': [0.5, 2.5, 2.5, 4.5]},
+    '5': {'name': 'Need Attention', 'color': '#fddd84', 'coords': [2.5, 2.5, 3.5, 3.5]},
+    '6': {'name': 'Potential Loyalists', 'color': '#72dda5', 'coords': [3.5, 1.5, 5.5, 3.5]},
+    '7': {'name': 'Cannot Lose Them', 'color': '#fe8287', 'coords': [0.5, 4.5, 2.5, 5.5]},
+    '8': {'name': 'Loyal Customers', 'color': '#a39cb2', 'coords': [2.5, 3.5, 4.5, 5.5]},
+    '9': {'name': 'Champions', 'color': '#73bcfd', 'coords': [4.5, 3.5, 5.5, 5.5]},
+    }
+
+# preparing layout settings
+config = {'displayModeBar': False}
+text_set = dict(showarrow=False, font=dict(size=20), xanchor='left', yanchor='top')
+shape_set = dict(type='rect', opacity=1)
+
+# preparing
+template = '%{x} & %{y}<br><br><i>Monetary: </i>%{customdata[1]:.2s} | %{customdata[2]:.2%}<br><i>Lifetime: </i>%{customdata[3]:.2s} | %{customdata[4]:.2s}<br><i>Period: </i>%{customdata[5]:.2s} | %{customdata[6]:.2s}<br><i>Active days: </i>%{customdata[7]:.2s} | %{customdata[8]:.2s}'
+```
+
+
+# RF with users
+
+```{python}
+fig = go.Figure(
+    data=go.Heatmap(
+        colorscale='Blues',
+        name='',
+        z=USERS,
+        x=RFM.columns, xgap=2,
+        y=RFM.index, ygap=2,
+        text=USERS,
+        texttemplate='%{text:.2s}',
+        customdata=HOVER_DATA,
+        hovertemplate=template,
+        textfont={'size': 20},
+        hoverongaps=False
+    )
+)
+for j in segments.values():
+    fig.add_shape(
+        x0=j['coords'][0]+.05, y0=j['coords'][1]+.05, x1=j['coords'][2]-.05, y1=j['coords'][3]-.05, 
+        line=dict(color=j['color'], width=7), **shape_set)
+    fig.add_annotation(x=j['coords'][0], y=j['coords'][3], text=j['name'], bgcolor=j['color'], **text_set)
+fig.update_layout(
+    uniformtext=dict(mode="show", minsize=6),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    autosize=False, width=1050, height=600,
+    margin=dict(l=0, r=0, b=0, t=0, pad=5),
+    font=dict(family="Poppins, sans-serif", size=16),
+    paper_bgcolor='white', plot_bgcolor='white',
+    xaxis=dict(showline = False, ticks = '', title = 'Recency'), 
+    yaxis=dict(showline = False, ticks = '', title = 'Frequency')
+)
+rf_w_users = fig
+rf_w_users.show(config=config)
+```
+
+
+## RFM
+
+```{python}
+fig = go.Figure(
+    data=go.Heatmap(
+        colorscale='Greens',
+        name='',
+        z=RFM,
+        x=RFM.columns, xgap=2,
+        y=RFM.index, ygap=2,
+        text=USERS,
+        texttemplate='%{text:.2s}',
+        customdata=HOVER_DATA,
+        hovertemplate=template,
+        textfont={'size': 20},
+        hoverongaps=False
+    )
+)
+for j in segments.values():
+    fig.add_shape(
+        x0=j['coords'][0]+.05, y0=j['coords'][1]+.05, x1=j['coords'][2]-.05, y1=j['coords'][3]-.05, 
+        line=dict(color=j['color'], width=7), **shape_set)
+    fig.add_annotation(x=j['coords'][0], y=j['coords'][3], text=j['name'], bgcolor=j['color'], **text_set)
+fig.update_layout(
+    uniformtext=dict(mode="show", minsize=6),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    autosize=False, width=1050, height=620,
+    margin=dict(l=0, r=0, b=0, t=15, pad=5),
+    font=dict(family="Poppins, sans-serif", size=16),
+    paper_bgcolor='white', plot_bgcolor='white',
+    xaxis=dict(showline = False, ticks = '', title = 'Recency'),
+    yaxis=dict(showline = False, ticks = '', title = 'Frequency')
+)
+rfm = fig
+rfm.show(config=config)
+```
+
+## RFM by regions
+
+```{python}
+fig = make_subplots(2, 3, subplot_titles=df['region'].unique(), vertical_spacing=0.15)
+for i, j, k in zip(df['region'].unique(), [1,1,1,2,2,2], [1,2,3,1,2,3]):
+    #
+    data = df[df.region==i]
+    RFM = data[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).sum().reset_index().pivot(index='frequency', columns='recency', values='monetary')
+
+    MEAN_MONETARY = data[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='monetary')
+    PERCENT_OF_TOTAL_MONETARY = data[['recency', 'frequency', 'monetary']].groupby(['recency', 'frequency']).sum().reset_index().pivot(index='frequency', columns='recency', values='monetary') / data['monetary'].sum()
+
+    USERS = data[['recency', 'frequency', 'user_id']].groupby(['recency', 'frequency']).count().reset_index().pivot(index='frequency', columns='recency', values='user_id')
+
+    LIFETIME_MEAN = data[['recency', 'frequency', 'lifetime']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='lifetime')
+    LIFETIME_MEDIAN = data[['recency', 'frequency', 'lifetime']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='lifetime')
+
+    PERIOD_MEAN = data[['recency', 'frequency', 'period']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='period')
+    PERIOD_MEDIAN = data[['recency', 'frequency', 'period']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='period')
+
+    ACTIVE_DAYS_MEAN = data[['recency', 'frequency', 'active_days']].groupby(['recency', 'frequency']).mean().reset_index().pivot(index='frequency', columns='recency', values='active_days')
+    ACTIVE_DAYS_MEDIAN = data[['recency', 'frequency', 'active_days']].groupby(['recency', 'frequency']).median().reset_index().pivot(index='frequency', columns='recency', values='active_days')
+
+    HOVER_DATA = np.dstack((
+        USERS, 
+        MEAN_MONETARY, PERCENT_OF_TOTAL_MONETARY, 
+        LIFETIME_MEAN, LIFETIME_MEDIAN, 
+        PERIOD_MEAN, PERIOD_MEDIAN, 
+        ACTIVE_DAYS_MEAN, ACTIVE_DAYS_MEDIAN
+    ))
+    #
+    fig.add_trace(
+        go.Heatmap(name=i, colorscale='Greens',
+            z=RFM,
+            x=RFM.columns, xgap=2,
+            y=RFM.index, ygap=2,
+            text=USERS,
+            texttemplate='%{text:.2s}',
+            customdata=HOVER_DATA,
+            hovertemplate=template,
+            textfont={'size': 16},
+            hoverongaps=False
+        ), j, k
+    )
+    fig.update_traces(showscale=False)
+fig.update_layout(
+    uniformtext=dict(mode="show", minsize=6),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    autosize=False, width=1050, height=600,
+    margin=dict(l=0, r=0, b=0, t=25, pad=5),
+    font=dict(family="Poppins, sans-serif", size=16),
+    paper_bgcolor='white', plot_bgcolor='white',
+    xaxis1={'title': ''},
+    xaxis2={'title': ''},
+    xaxis3={'title': ''},
+    xaxis4={'title': 'Recency'},
+    xaxis5={'title': 'Recency'},
+    xaxis6={'title': 'Recency'},
+    yaxis1={'title': 'Frequency'},
+    yaxis2={'title': ''},
+    yaxis3={'title': ''},
+    yaxis4={'title': 'Frequency'},
+    yaxis5={'title': ''},
+    yaxis6={'title': ''}
+    )
+rfm_regions = fig
+rfm_regions.show(config=config)
+```
