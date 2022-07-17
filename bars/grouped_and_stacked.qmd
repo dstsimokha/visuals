@@ -101,5 +101,5 @@ fig.update_layout(
         for x, total in data[data.year==2022][['month', 'all']].values
     ]
 )
-fig
+fig.show(config=config)
 ```
