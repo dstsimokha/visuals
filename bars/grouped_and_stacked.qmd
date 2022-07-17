@@ -1,5 +1,5 @@
 ---
-title: "RFM Heatmap"
+title: "Grouped & Stacked Bars"
 subtitle: "Quarto (RevealJS) presentation & Plotly charts"
 author: "[dstsimokha](https://github.com/dstsimokha)"
 jupyter: python3
@@ -11,9 +11,9 @@ format:
     smaller: true
 ---
 
-Plotly by default gives an opportunity to created grouped or stacked bar charts.  
+Plotly by default gives an opportunity to created grouped **or** stacked bar charts.  
 
-I needed both grouped & stacked bars simultaneously on the one chart to depict both *year comparison* and *users segments* - in Plotly it can be achieved with usage of `subplots` and `offset` & `offsetgroup`.
+I needed both grouped & stacked bars simultaneously on one chart to depict both *year* and *segments* comparisons - in Plotly it can be achieved with usage of `subplots` and `offset` & `offsetgroup`.
 
 
 ```{python}
