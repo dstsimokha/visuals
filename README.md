@@ -1,3 +1,5 @@
 # visuals
 
-- [RFM](rfm/rfm.html)
+Heatmaps:  
+- [RFM](heatmaps/rfm.html)
+

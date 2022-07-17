@@ -1,0 +1,19 @@
+/*-- scss:defaults --*/
+
+$font-family-sans-serif: Poppins, sans-serif !default;
+// $presentation-font-size-root: 20px;
+$presentation-h1-font-size: 35px;
+$presentation-h2-font-size: 30px;
+
+$body-bg: #fff;
+$body-color: #191919;
+$link-color: #42affa;
+$selection-color: #ffa500;
+
+
+/*-- scss:rules --*/
+
+.reveal .slide blockquote {
+    border-left: 3px solid $text-muted;
+    padding-left: 0.5em;
+  }
