@@ -1,0 +1,105 @@
+---
+title: "RFM Heatmap"
+subtitle: "Quarto (RevealJS) presentation & Plotly charts"
+author: "[dstsimokha](https://github.com/dstsimokha)"
+jupyter: python3
+format:
+  revealjs:
+    navigation-mode: vertical
+    self-contained: true
+    theme: [default, ../style/custom.scss]
+    smaller: true
+---
+
+Plotly by default gives an opportunity to created grouped or stacked bar charts.  
+
+I needed both grouped & stacked bars simultaneously on the one chart to depict both *year comparison* and *users segments* - in Plotly it can be achieved with usage of `subplots` and `offset` & `offsetgroup`.
+
+
+```{python}
+# loading packages
+import calendar
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+# helper function to show numbers in annotations
+def human_format(num):
+    num = float('{:.3g}'.format(num))
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+```
+
+
+```{python}
+# generating data
+df = pd.DataFrame({
+    # year & month
+    'year': [2021]*12 + [2022]*12,
+    'month': list(range(1, 13)) + list(range(1, 13))
+})
+
+# distributions
+_2021 = list(np.linspace(0.75, 1, 6))+list(reversed(np.linspace(0.75, 1, 6)))
+_2022 = list(np.linspace(1, 1.5, 6))+list(reversed(np.linspace(1, 1.5, 6)))
+
+# categories
+df['new_retained'] = np.random.normal(loc=4500, scale=1000, size=24) * (_2021 + _2022)
+df['old_retained'] = np.random.normal(loc=6000, scale=500, size=24) * (_2021 + _2022)
+df['resurrected'] = np.random.normal(loc=4000, scale=500, size=24) * (_2021 + _2022)
+df['new'] = np.random.normal(loc=20000, scale=250, size=24) * (_2021 + _2022)
+
+# plotting data
+data = df[['year', 'month', 'new_retained', 'old_retained', 'resurrected', 'new']].groupby(['year', 'month']).agg('sum').reset_index()
+data['all'] = data['new_retained'] + data['old_retained'] + data['resurrected'] + data['new']
+```
+
+
+```{python}
+# creating plots
+# preparing layout settings
+config = {'displayModeBar': False}
+layout = dict(
+    #uniformtext=dict(mode='show', minsize=6),
+    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', template='simple_white',
+    legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+    autosize=False, width=1050, height=600,
+    margin=dict(l=0, r=0, b=0, t=0, pad=5),
+    xaxis=dict(showline = False, ticks = ''),
+    yaxis=dict(showline = False, ticks = '', ticklabelstep=2),# visible=False),
+    font=dict(family='Poppins, sans-serif', size=15)
+)
+hover_template = '%{y:.2s}'
+text_template = '%{text:.2s}'
+```
+
+
+# Grouped & Stacked
+
+```{python}
+fig = make_subplots(specs=[[{"secondary_y": True}]])  # https://coolors.co/d7eade-bcdcc8-e4f1e9-a1ceb2-87c09d-afd5bd
+for j, c21, c22 in zip(['new_retained', 'old_retained', 'resurrected', 'new'], ['#BCDCC8', '#E4F1E9', '#FBDADA', '#DADBE7'], ['#87C09D', '#AFD5BD', '#F49090', '#A8ACC7']):
+    fig.add_trace(
+        go.Bar(x=data[data.year==2021]['month'], y=data[data.year==2021][j], name=j, marker_color=c21, textfont=dict(color='grey'), hovertemplate=hover_template, texttemplate=text_template, text=data[data.year==2021][j], offsetgroup='1', offset=-0.35, width=0.4, legendgroup='1', legendgrouptitle_text='2021'), secondary_y=False
+    )
+    fig.add_trace(
+        go.Bar(x=data[data.year==2022]['month'], y=data[data.year==2022][j], name=j, marker_color=c22, hovertemplate=hover_template, texttemplate=text_template, text=data[data.year==2022][j], offsetgroup='2', offset=0.050, width=0.4, legendgroup='2', legendgrouptitle_text='2022'), secondary_y=True
+    )
+fig.update_traces(textangle=0, textfont_size=12, textposition='inside')
+fig.update_layout(layout)
+fig.update_layout(
+    xaxis=dict(tickvals=list(range(1, 13)), ticktext=calendar.month_name[1:]), barmode = 'stack', 
+    yaxis2=dict(visible=False, matches="y", overlaying="y", anchor="x"),
+    annotations=[
+        {'x': x-0.15, 'y': total + 1250, 'text': human_format(total), 'showarrow': False, 'font': dict(size=12, color='grey')}
+        for x, total in data[data.year==2021][['month', 'all']].values
+    ] + [
+        {'x': x+0.25, 'y': total + 1250, 'text': human_format(total), 'showarrow': False, 'font': dict(size=13)}
+        for x, total in data[data.year==2022][['month', 'all']].values
+    ]
+)
+fig
+```

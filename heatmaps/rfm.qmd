@@ -7,7 +7,7 @@ format:
   revealjs:
     navigation-mode: vertical
     self-contained: true
-    theme: [default, style/custom.scss]
+    theme: [default, ../style/custom.scss]
     smaller: true
 ---
 
@@ -27,6 +27,7 @@ The RFM stands for `Recency, Frequency, Monetary` and helps to segment users by 
 
 The main point is to look at a distribution of users inside `Recency` & `Frequency` bins - amount of users inside a bin and their `Monetary` value can be used as written number and bin color opacity interchangeably.
 :::
+
 
 ```{python}
 # loading packages
@@ -119,7 +120,7 @@ layout = dict(
 )
 traces = dict(colorbar=dict(thickness=40, ticklabelstep=2))
 
-# preparing
+# preparing hover text template
 template = '%{x} & %{y}<br><br><i>Monetary: </i>%{customdata[1]:.2s} | %{customdata[2]:.2%}<br><i>Lifetime: </i>%{customdata[3]:.2s} | %{customdata[4]:.2s}<br><i>Period: </i>%{customdata[5]:.2s} | %{customdata[6]:.2s}<br><i>Active days: </i>%{customdata[7]:.2s} | %{customdata[8]:.2s}'
 ```
 
@@ -147,8 +148,8 @@ for j in segments.values():
         x0=j['coords'][0]+.05, y0=j['coords'][1]+.05, x1=j['coords'][2]-.05, y1=j['coords'][3]-.05, 
         line=dict(color=j['color'], width=7), **shape_set)
     fig.add_annotation(x=j['coords'][0], y=j['coords'][3], text=j['name'], bgcolor=j['color'], **text_set)
-fig.update_layout(**layout)
-fig.update_traces(**traces)
+fig.update_layout(layout)
+fig.update_traces(traces)
 fig.show(config=config)
 ```
 
@@ -176,8 +177,8 @@ for j in segments.values():
         x0=j['coords'][0]+.05, y0=j['coords'][1]+.05, x1=j['coords'][2]-.05, y1=j['coords'][3]-.05, 
         line=dict(color=j['color'], width=7), **shape_set)
     fig.add_annotation(x=j['coords'][0], y=j['coords'][3], text=j['name'], bgcolor=j['color'], **text_set)
-fig.update_layout(**layout)
-fig.update_traces(**traces)
+fig.update_layout(layout)
+fig.update_traces(traces)
 fig.show(config=config)
 ```
 
@@ -227,8 +228,8 @@ for i, j, k in zip(df['region'].unique(), [1,1,1,2,2,2], [1,2,3,1,2,3]):
         ), j, k
     )
     fig.update_traces(showscale=False)
-fig.update_layout(**layout)
-fig.update_traces(**traces)
+fig.update_layout(layout)
+fig.update_traces(traces)
 fig.update_layout(
     margin=dict(l=0, r=0, b=0, t=25, pad=5),
     xaxis1={'title': ''},
